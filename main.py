@@ -82,26 +82,26 @@ def GetSegmentsInfo(filename):
 def CreateACrop(img, left, upper, right, lower):
     img_xmin = 0
     img_ymin = 0
-    img_xmax = img.width
-    img_ymax = img.height
+    img_xmax = img.width-1
+    img_ymax = img.height-1
     
     crop_centx = left + (right - left) / 2
     crop_centy = lower + (upper - lower) / 2
-    crop_size = int(max((right - left), (lower - upper)))
-    crop_hsize = int(crop_size / 2)
-    crop_xmin = int(crop_centx - crop_hsize)
-    crop_xmax = int(crop_centx + crop_hsize)
-    crop_ymin = int(crop_centy - crop_hsize)
-    crop_ymax = int(crop_centy + crop_hsize)
+    crop_size = round(max((right - left), (lower - upper)))
+    crop_hsize = round(crop_size / 2)
+    crop_xmin = round(crop_centx - crop_hsize)
+    crop_xmax = round(crop_centx + crop_hsize)
+    crop_ymin = round(crop_centy - crop_hsize)
+    crop_ymax = round(crop_centy + crop_hsize)
 
     cross_boundary = False
     shift = [0, 0]
     if crop_xmin < img_xmin :
-        shift[0] = int(img_xmin - crop_xmin)
+        shift[0] = img_xmin - crop_xmin
         crop_xmin = img_xmin
         cross_boundary = True
     if crop_ymin < img_ymin :
-        shift[1] = int(img_ymin - crop_ymin)
+        shift[1] = img_ymin - crop_ymin
         crop_ymin = img_ymin
         cross_boundary = True
     if crop_xmax > img_xmax :
@@ -134,11 +134,11 @@ for seg, idx in zip(seg_info_list, range(len(seg_info_list))):
     if seg.minx == seg.maxx or seg.miny == seg.maxy:
         continue
     img_crop = CreateACrop(img, seg.minx, seg.miny, seg.maxx, seg.maxy)
-    # img_crop = img.crop((seg.minx, seg.miny, seg.maxx, seg.maxy))
+    img_crop = img_crop.resize((224,224), resample=PIL.Image.BICUBIC)
     img_crop_fn = img_fn[0:len(img_fn)-len('.jpg')]+'_seg_{}'.format(idx)+'.jpg'
     img_crop.save(img_crop_fn)
     img_mask_crop = CreateACrop(seg.mask, seg.minx, seg.miny, seg.maxx, seg.maxy)
-    # img_mask_crop = seg.mask.crop((seg.minx, seg.miny, seg.maxx, seg.maxy))
+    img_mask_crop = img_mask_crop.resize((224,224), resample=PIL.Image.BICUBIC)
     img_mask_crop_fn = img_fn[0:len(img_fn)-len('.jpg')]+'_seg_{}_mask'.format(idx)+'.jpg'
     img_mask_crop.save(img_mask_crop_fn)
 
