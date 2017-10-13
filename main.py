@@ -10,15 +10,6 @@ import time
 from time import gmtime, strftime
 import util
 
-config = util.get_args()
-
-color_path = config.color_path
-depth_path = config.depth_path
-normal_path = config.normal_path
-seg_path = config.seg_path
-result_path = config.result_path
-result_mask_path = config.result_mask_path
-
 
 class SegInfo:
     def __init__(self, minx, miny, maxx, maxy, width, height):
@@ -30,25 +21,32 @@ class SegInfo:
         self.mask = Image.new('1', size=(width, height))
 
 
-def GetFileNames(color_dir, normal_dir, seg_dir):
-    list_dir = os.walk(color_dir)
+def GetFileNames(color_dir, depth_dir, normal_dir, seg_dir):
     files = os.listdir(color_dir)
+    files.sort()
     col_fn_list = []
-    depth_fn_list = []
     for f in files:
         if not os.path.isdir(f):
             if f.find('color') != -1:
                 col_fn_list.append(f)
+    
+    files = os.listdir(depth_dir)
+    files.sort()
+    depth_fn_list = []
+    for f in files:
+        if not os.path.isdir(f):
             if f.find('depth') != -1:
                 depth_fn_list.append(f)
 
     files = os.listdir(normal_dir)
+    files.sort()
     normal_fn_list = []
     for f in files:
         if not os.path.isdir(f):
             normal_fn_list.append(f)
 
     files = os.listdir(seg_dir)
+    files.sort()
     seg_fn_list = []
     for f in files:
         if not os.path.isdir(f):
@@ -166,7 +164,22 @@ def CreateCroppedImage(img, left, upper, right, lower, fill_col, scl_fac=1, trun
         return new_img
 
 
-filenames_list = GetFileNames(color_path, normal_path, seg_path)
+
+config = util.get_args()
+if not config.no_config_file:
+    print('Using config file: ', config.config_file)
+    config = util.get_config_from_file(config.config_file, config)
+else:
+    print('No config file is prescribed')
+
+color_path = config.color_path
+depth_path = config.depth_path
+normal_path = config.normal_path
+seg_path = config.seg_path
+result_path = config.result_path
+result_mask_path = config.result_mask_path
+
+filenames_list = GetFileNames(color_path, depth_path, normal_path, seg_path)
 os.makedirs(result_path, exist_ok=True)
 os.makedirs(result_mask_path, exist_ok=True)
 
@@ -205,7 +218,7 @@ for fr in range(frame_num):
     normal_img_fn = filenames_list[2][fr]
     normal_img = Image.open(normal_path+normal_img_fn)
     # Print some statistics
-    if fr % config.print_every == 0:
+    if not config.no_print and fr % config.print_every == 0:
         print(print_template.format(strftime("[%H:%M:%S]",time.gmtime(time.time()-start)),
               fr, frame_num, 100.*fr/frame_num))
     # For each segment, generate cropped color image, depth image, normal map and segment mask
