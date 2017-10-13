@@ -6,15 +6,19 @@ import PIL
 import PIL.Image as Image
 import PIL.ImageOps as ImgOps
 import os
+import time
+from time import gmtime, strftime
+import util
 
-color_path = './data/'
-depth_path = './data/'
-normal_path = './data/Normal/'
-seg_path = './data/segmentation_images/'
-input_path = [color_path, depth_path, normal_path, seg_path]
+config = util.get_args()
 
-result_path = './result/'
-result_mask_path = './result/mask/'
+color_path = config.color_path
+depth_path = config.depth_path
+normal_path = config.normal_path
+seg_path = config.seg_path
+result_path = config.result_path
+result_mask_path = config.result_mask_path
+
 
 class SegInfo:
     def __init__(self, minx, miny, maxx, maxy, width, height):
@@ -24,6 +28,7 @@ class SegInfo:
         self.maxy = maxy
         self.numpnt = 0
         self.mask = Image.new('1', size=(width, height))
+
 
 def GetFileNames(color_dir, normal_dir, seg_dir):
     list_dir = os.walk(color_dir)
@@ -66,8 +71,7 @@ def GetSegmentsInfo(filename):
         
     all_seg_mask = Image.new('RGB', size=(width,height), color=(0, 0, 0))
     asm_map = all_seg_mask.load()
-    num_color = 32
-    cp = sns.color_palette("hls", num_color)
+    cp = sns.color_palette("hls", config.col_num)
     cpi = [(int(x[0]*255),int(x[1]*255),int(x[2]*255)) for x in cp]
 
     for y in range(height):
@@ -81,7 +85,7 @@ def GetSegmentsInfo(filename):
                 pixel_map = seg_info_list[seg_id].mask.load()
                 pixel_map[x,y] = True
                 seg_info_list[seg_id].numpnt += 1
-                asm_map[x,y] = cpi[seg_id % num_color]
+                asm_map[x,y] = cpi[seg_id % config.col_num]
     
     return seg_info_list, all_seg_mask
 
@@ -169,26 +173,45 @@ os.makedirs(result_mask_path, exist_ok=True)
 grey_color = (128, 128, 128)
 black_color = (0, 0, 0)
 
-#for i in range(len(filenames_list[0])):
-for i in range(1):
+frame_num = len(filenames_list[0])
+print('Frame file information:')
+print('# Color image (frame): ', len(filenames_list[0]))
+print('   >>> [{}] --> [{}]'.format(filenames_list[0][0], filenames_list[0][-1]))
+print('# Depth map: ', len(filenames_list[1]))
+print('   >>> [{}] --> [{}]'.format(filenames_list[1][0], filenames_list[1][-1]))
+print('# Normal map: ', len(filenames_list[2]))
+print('   >>> [{}] --> [{}]'.format(filenames_list[2][0], filenames_list[2][-1]))
+print('# Segmentation info.: ', len(filenames_list[3]))
+print('   >>> [{}] --> [{}]'.format(filenames_list[3][0], filenames_list[3][-1]))
+if (input('Start or not ([Y]/N):') or 'Y') != 'Y':
+    exit()
+print('Starting generation ...')
+print_template = ' '.join('{:<9s},Progress:{:>6.0f} frame / {} frame,{:>6.1f}%'.split(','))
+start = time.time()
+
+for fr in range(frame_num):
     # Get segmentation information
-    seg_info_list, all_seg_mask = GetSegmentsInfo(seg_path+filenames_list[3][i])
+    seg_info_list, all_seg_mask = GetSegmentsInfo(seg_path+filenames_list[3][fr])
     # Open color image and generate segmentation masked color image
-    col_img_fn = filenames_list[0][i]
+    col_img_fn = filenames_list[0][fr]
     col_img = Image.open(color_path+col_img_fn)
-    img_mask = Image.blend(col_img, all_seg_mask, alpha=0.7)
+    img_mask = Image.blend(col_img, all_seg_mask, alpha=config.blend_alpha)
     img_mask_fn = col_img_fn[0:len(col_img_fn)-len('.jpg')]+'_mask.jpg'
     img_mask.save(result_mask_path+img_mask_fn)
     # Open depth image
-    depth_img_fn = filenames_list[1][i]
+    depth_img_fn = filenames_list[1][fr]
     depth_img = Image.open(depth_path+depth_img_fn)
     # Open normal map
-    normal_img_fn = filenames_list[2][i]
+    normal_img_fn = filenames_list[2][fr]
     normal_img = Image.open(normal_path+normal_img_fn)
+    # Print some statistics
+    if fr % config.print_every == 0:
+        print(print_template.format(strftime("[%H:%M:%S]",time.gmtime(time.time()-start)),
+              fr, frame_num, 100.*fr/frame_num))
     # For each segment, generate cropped color image, depth image, normal map and segment mask
     for seg, seg_id in zip(seg_info_list, range(len(seg_info_list))):
-        if seg.numpnt < 300:
-            print('  >>> Segment {} of image {} is being omitted due to too small size.'.format(seg_id, i))
+        if seg.numpnt < config.tol_size:
+            print('  >>> Segment {} of frame {} is being omitted due to too small size.'.format(seg_id, fr))
             continue
         # Crop color image
         img_crop = CreateCroppedImage(col_img, seg.minx, seg.miny, seg.maxx, seg.maxy, fill_col=grey_color)   # local crop
@@ -229,5 +252,3 @@ for i in range(1):
         img_mask_cntx = CreateContextMask(img_mask_crop)
         img_mask_cntx_fn = col_img_fn[0:len(col_img_fn)-len('.color.jpg')]+'_seg_{}_g_mask_c'.format(seg_id)+'.png'
         img_mask_cntx.save(result_path+img_mask_cntx_fn)
-
-
