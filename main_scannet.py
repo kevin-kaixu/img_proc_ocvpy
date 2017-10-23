@@ -55,7 +55,7 @@ def GetFileNames(color_dir, depth_dir, normal_dir, seg_dir):
     files.sort()
     seg_fn_list = {}
     for f in files:
-        if os.path.isfile(os.path.join(seg_dir, f)) and f.find('.png') != -1:
+        if os.path.isfile(os.path.join(seg_dir, f)) and f.find('_segmentation.png') != -1:
             seg_fn_list[f[0:len(f)-len('_segmentation.png')]] = f
 
     return (col_fn_list, depth_fn_list, normal_fn_list, seg_fn_list)
@@ -260,10 +260,10 @@ def isExist(result_path, col_img_fn, depth_img_fn, normal_img_fn, seg_id):
         os.rename(fn, fn2)
     elif not os.path.exists(fn2):
         return False
-    fn = os.path.join(result_path, depth_img_fn[0:len(depth_img_fn)-len('.depth.pgm')]+'_seg_{}_l_depth'.format(seg_id)+'.pgm')
+    fn = os.path.join(result_path, depth_img_fn[0:len(depth_img_fn)-len('.depth.png')]+'_seg_{}_l_depth'.format(seg_id)+'.png')
     if not os.path.exists(fn):
         return False
-    fn = os.path.join(result_path, depth_img_fn[0:len(depth_img_fn)-len('.depth.pgm')]+'_seg_{}_g_depth'.format(seg_id)+'.pgm')
+    fn = os.path.join(result_path, depth_img_fn[0:len(depth_img_fn)-len('.depth.png')]+'_seg_{}_g_depth'.format(seg_id)+'.png')
     if not os.path.exists(fn):
         return False
     fn = os.path.join(result_path, normal_img_fn[0:len(normal_img_fn)-len('.depth.jpg')]+'_seg_{}_l_normal'.format(seg_id)+'.png')
@@ -392,11 +392,11 @@ for seg_fr in filenames_list[3].items():
         # Crop depth image
         img_crop = CreateCroppedImage(depth_img, seg.minx, seg.miny, seg.maxx, seg.maxy, fill_col=0)   # local crop
         img_crop = img_crop.resize((224,224), resample=PIL.Image.BICUBIC)
-        img_crop_fn = depth_img_fn[0:len(depth_img_fn)-len('.png')]+'_seg_{}_l_depth'.format(seg_id)+'.pgm'
+        img_crop_fn = depth_img_fn[0:len(depth_img_fn)-len('.png')]+'_seg_{}_l_depth'.format(seg_id)+'.png'
         img_crop.save(os.path.join(result_path, img_crop_fn))
         img_crop = CreateCroppedImage(depth_img, seg.minx, seg.miny, seg.maxx, seg.maxy, fill_col=0, scl_fac=5, truncate=True)    # global crop
         img_crop = img_crop.resize((224,224), resample=PIL.Image.BICUBIC)
-        img_crop_fn = depth_img_fn[0:len(depth_img_fn)-len('.png')]+'_seg_{}_g_depth'.format(seg_id)+'.pgm'
+        img_crop_fn = depth_img_fn[0:len(depth_img_fn)-len('.png')]+'_seg_{}_g_depth'.format(seg_id)+'.png'
         img_crop.save(os.path.join(result_path, img_crop_fn))
         # Crop normal map
         img_crop = CreateCroppedImage(normal_img, seg.minx, seg.miny, seg.maxx, seg.maxy, fill_col=black_color)   # local crop
